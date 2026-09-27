@@ -4,6 +4,7 @@ from rest_framework.routers import DefaultRouter
 from apps.catalog.views import ItemViewSet
 from apps.core.views import LiveView, ReadyView, VersionView
 from apps.identity import views as identity
+from apps.provisioning import platform_views as platform
 from apps.provisioning import views as internal
 
 # Routes métier. Un nouveau module ajoute ici son ViewSet.
@@ -22,6 +23,16 @@ internal_patterns = [
     path("jobs/<uuid:job_id>/", internal.JobView.as_view()),
 ]
 
+# Écrans de la plateforme (comptes et rôles), même forme que l'ERP et Lumina.
+platform_patterns = [
+    path("tenant-status/", platform.TenantStatusView.as_view()),
+    path("bootstrap-admin/", platform.BootstrapAdminView.as_view()),
+    path("accounts/", platform.AccountsView.as_view()),
+    path("accounts/<int:pk>/", platform.AccountView.as_view()),
+    path("roles/", platform.RolesView.as_view()),
+    path("roles/<slug:key>/", platform.RoleView.as_view()),
+]
+
 urlpatterns = [
     # Sondes : Docker, déploiement, plateforme.
     path("api/health/live/", LiveView.as_view()),
@@ -38,4 +49,5 @@ urlpatterns = [
     path("api/", include(router.urls)),
     # Plateforme SigmaGravity, signé.
     path("api/internal/v1/", include(internal_patterns)),
+    path("api/platform/", include(platform_patterns)),
 ]

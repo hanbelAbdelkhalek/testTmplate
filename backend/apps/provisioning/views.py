@@ -88,7 +88,7 @@ def idempotent(handler):
                     "Cette clé d'idempotence a déjà servi pour un autre appel.",
                     409, "idempotency_conflict",
                 )
-            response = Response(deja.body, status=deja.status_code)
+            response = Response(None if deja.status_code == 204 else deja.body, status=deja.status_code)
             response["Idempotent-Replayed"] = "true"
             return response
         response = handler(self, request, *args, **kwargs)
@@ -101,7 +101,8 @@ def idempotent(handler):
                     "path": request.get_full_path()[:300],
                     "request_hash": empreinte,
                     "status_code": response.status_code,
-                    "body": response.data,
+                    # Une réponse sans corps (204) n'a rien à rejouer.
+                    "body": response.data if response.data is not None else {},
                 },
             )
         return response

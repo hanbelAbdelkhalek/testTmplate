@@ -3,13 +3,14 @@
 # Déploie une pile de la solution — essai ou production
 # =============================================================================
 #   ./deploy.sh dev     |     ./deploy.sh prod
+#   ./deploy.sh dev main          ← branche imposée (celle du registre de la plateforme)
 #
 # Chaque pile suit sa branche. Passer de l'essai à la production est une
 # fusion faite à la main quand le travail est prêt — jamais l'effet de bord
 # d'un push.
 set -euo pipefail
 
-# --- À adapter par solution --------------------------------------------------
+# --- Branches par défaut, quand aucune n'est passée en argument ---------------
 BRANCHE_dev="dev"
 BRANCHE_prod="main"
 # -----------------------------------------------------------------------------
@@ -17,10 +18,11 @@ BRANCHE_prod="main"
 PILE="${1:-}"
 case "$PILE" in
   dev|prod) ;;
-  *) echo "usage : $0 dev|prod" >&2; exit 2 ;;
+  *) echo "usage : $0 dev|prod [branche]" >&2; exit 2 ;;
 esac
 BRANCHE_VAR="BRANCHE_$PILE"
-BRANCHE="${!BRANCHE_VAR}"
+BRANCHE="${2:-${!BRANCHE_VAR}}"
+[[ "$BRANCHE" =~ ^[A-Za-z0-9._/-]+$ ]] || { echo "Branche invalide : $BRANCHE" >&2; exit 2; }
 
 RACINE="$(cd "$(dirname "$0")" && pwd)"
 cd "$RACINE"

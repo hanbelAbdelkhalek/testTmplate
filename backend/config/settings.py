@@ -69,6 +69,9 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 PLATFORM_SHARED_SECRET = env("PLATFORM_SHARED_SECRET")
 PLATFORM_KEY_ID = env("PLATFORM_KEY_ID", "platform-v1")
 PLATFORM_SIGNATURE_TOLERANCE_SECONDS = 300
+# Domaine des adresses clients : un espace créé par la plateforme reçoit
+# l'adresse <nom>.<ROOT_DOMAIN>.
+ROOT_DOMAIN = env("ROOT_DOMAIN", "sigmagravity.com")
 
 # En local uniquement : l'espace servi quand la requête ne porte aucun hôte
 # connu (localhost). Ignoré hors DEBUG.

@@ -4,9 +4,9 @@ from django.http import JsonResponse
 from .models import Domain, Tenant, normalize_host
 
 # Routes servies sans espace : santé et version (sondées par Docker et la
-# plateforme), et l'API interne, où la plateforme désigne l'espace dans
-# l'adresse, signée.
-EXEMPT_PREFIXES = ("/api/health/", "/api/version/", "/api/internal/")
+# plateforme), et les API de la plateforme, où l'espace est désigné dans
+# l'appel, signé.
+EXEMPT_PREFIXES = ("/api/health/", "/api/version/", "/api/internal/", "/api/platform/")
 
 
 def resolve_tenant(request):

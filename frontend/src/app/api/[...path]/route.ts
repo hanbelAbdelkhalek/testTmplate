@@ -5,12 +5,12 @@ import { djangoFetch } from '@/lib/django';
  * Relais du navigateur vers Django : /api/<chemin> → Django /api/<chemin>.
  *
  * Refusés ici, quoi que dise Django :
- *  - internal/ : l'API de la plateforme. Signée, donc déjà protégée, mais
+ *  - internal/, platform/ : les API de la plateforme. Signées, donc déjà protégées, mais
  *    elle n'a rien à faire sur l'Internet public.
  *  - auth/refresh : le jeton de renouvellement reste dans son cookie
  *    httpOnly ; le renouvellement se fait dans proxy.ts.
  */
-const BLOCKED = [/^internal(\/|$)/, /^auth\/refresh(\/|$)/, /^auth\/login(\/|$)/];
+const BLOCKED = [/^internal(\/|$)/, /^platform(\/|$)/, /^auth\/refresh(\/|$)/, /^auth\/login(\/|$)/];
 
 async function relay(request: Request, ctx: { params: Promise<{ path: string[] }> }) {
   const { path } = await ctx.params;

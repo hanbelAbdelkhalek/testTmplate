@@ -34,7 +34,7 @@ commun à toutes les solutions ; il ne reste à écrire que le métier.
 | Créer un espace de test en local | `cd backend && python manage.py creer_espace demo --host localhost --demo` |
 | Tests backend | `cd backend && python manage.py test` |
 | Contrôles frontend | `cd frontend && npx eslint src && npm run build` |
-| Déployer | `./deploy.sh dev` ou `./deploy.sh prod` (sur le serveur) |
+| Déployer | `./deploy.sh dev [branche]` ou `./deploy.sh prod [branche]` (sur le serveur) |
 
 Le squelette a été généré avec les commandes officielles — `django-admin
 startproject config .`, `python manage.py startapp <app> apps/<app>`,
@@ -101,6 +101,24 @@ Toutes sous `/api/internal/v1/`, signées HMAC-SHA256 avec
 | PATCH | `tenants/<external_id>/accounts/<id>/` | mot de passe, rôle, état |
 | POST | `tenants/<external_id>/demo-reset/` | réinitialiser un espace de démonstration |
 | GET | `jobs/<id>/` | état d'une opération |
+
+### Les écrans de la plateforme : comptes et rôles
+
+Sous `/api/platform/`, signées de la même façon, **même forme que l'ERP et
+Lumina** : la plateforme utilise un seul écran pour toutes ses solutions.
+L'espace est désigné par son nom d'adresse (`tenant=dev-client1`).
+
+| Méthode | Chemin | Rôle |
+|---|---|---|
+| GET | `tenant-status/?tenant=` | l'espace a-t-il un administrateur ? |
+| POST | `bootstrap-admin/` | premier administrateur ; **crée l'espace** (adresse `<tenant>.<ROOT_DOMAIN>`, rôles, modules) s'il n'existe pas |
+| GET, POST | `accounts/` | comptes (`id, name, username, email, role, status, initials, lastLogin`) et rôles ; ajouter |
+| PATCH | `accounts/<id>/` | mot de passe, rôle, état (`actif` / `inactif`) |
+| GET, POST | `roles/` | rôles avec leurs permissions, catalogue des permissions ; créer un rôle |
+| PATCH, DELETE | `roles/<cle>/` | renommer, changer les permissions ; supprimer un rôle sans compte (pas un rôle de base) |
+
+Retirer la gestion des comptes au dernier rôle qui l'a, ou désactiver le
+dernier administrateur, est refusé (409).
 
 Un appel destiné à une autre solution ou à l'autre pile (`solution.key`,
 `solution.environment`) est refusé (409) avant d'écrire quoi que ce soit.
