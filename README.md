@@ -128,36 +128,27 @@ Un appel destiné à une autre solution ou à l'autre pile (`solution.key`,
 ## Brancher une nouvelle solution
 
 1. **Créer le dépôt** : `scripts/nouvelle-solution.sh <cle> "<Nom>"`, puis le
-   pousser sur GitHub avec deux branches, `dev` et `main`.
+   pousser sur GitHub (`https://github.com/…`, public ou avec accès pour le
+   serveur).
 2. **Écrire le métier** : `backend/apps/core/solution.py` (modules, rôles),
-   `scripts/nouveau-module.sh <module>` pour chaque module, les pages dans
-   `frontend/src/app/(dashboard)/dashboard/`, le menu dans
-   `frontend/src/app/(dashboard)/dashboard/layout.tsx`. Garder `solution.yaml`
-   aligné.
-3. **Enregistrer dans la plateforme** (écran « Gestion des solutions », sur
-   dev.sigmagravity.com puis sigmagravity.com) : dépôt, branche, et **toutes
-   les variables** de `.env.example` dans « Variables d'environnement ».
-   `SECRET_KEY`, `DATABASE_URL` et `PLATFORM_SHARED_SECRET` en secret.
-   Dans « Réglages avancés » : l'URL API interne
-   `http://<cle>-dev-backend:8000/api` (c'est elle qui active les appels
-   signés).
-4. **Première mise en service** sur le serveur, une fois par pile :
+   `scripts/nouveau-module.sh <module>` pour chaque module (suivre le README
+   créé dans le module), les pages dans `frontend/src/app/(dashboard)/dashboard/`.
+   Garder `solution.yaml` aligné.
+3. **Ajouter la solution dans la plateforme** (Gestion des solutions →
+   Ajouter) : clé, nom, dépôt, branche. **Tout le reste est généré d'office** :
+   base de données (`DATABASE_URL` et `DB_*`, mot de passe compris),
+   `SECRET_KEY`, secret de la plateforme, `PREFIX`… N'ajouter que les
+   variables propres à l'application.
+4. **Déployer** : le suivi de la solution s'ouvre → « Déployer ». Le serveur
+   récupère la branche, écrit le `.env`, crée la base, construit, migre,
+   démarre, vérifie la santé et met nginx à jour ; chaque étape s'affiche.
+   Le suivi vérifie ensuite tout le réglage.
+5. **Ouvrir la solution à un client** (Espaces) : lui choisir une adresse,
+   puis « Déployer » à nouveau pour que nginx la serve. Ses comptes et ses
+   rôles se gèrent depuis sa fiche, ou par le client dans « Mes solutions ».
 
-   ```bash
-   docker exec -it global_postgres psql -U postgres \
-     -c "CREATE ROLE <cle>_dev LOGIN PASSWORD '<mot de passe>';" \
-     -c "CREATE DATABASE <cle>_dev OWNER <cle>_dev;"
-   git clone <dépôt> ~/apps/<cle> && cd ~/apps/<cle>
-   docker exec nfc_dev_backend python manage.py ecrire_env <cle> > /tmp/env \
-     && install -m 600 /tmp/env .env.dev; rm -f /tmp/env
-   ./deploy.sh dev
-   ```
-
-5. **nginx** : `infrastructure/nginx.conf.example` → `~/infra/nginx/conf.d/10-<cle>.conf`,
-   une adresse par client dans `server_name`, puis `nginx -t` et rechargement.
-
-Même chose pour la production avec `_prod`, `.env.prod`, `nfc_prod_backend`
-et `./deploy.sh prod`.
+À la main, sans la plateforme : voir `deploy.sh` (même étapes, base à créer
+soi-même).
 
 ## Les règles à ne pas casser
 
