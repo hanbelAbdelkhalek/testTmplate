@@ -1,0 +1,19 @@
+from tests.helpers import SolutionTestCase, make_account, make_tenant
+
+from .models import Element
+
+
+class {{ camel_case_app_name }}IsolationTests(SolutionTestCase):
+    """À garder vert : deux espaces, et l'un ne voit rien de l'autre."""
+
+    def setUp(self):
+        super().setUp()
+        self.a, self.b = make_tenant("alpha"), make_tenant("beta")
+        make_account(self.a)
+        Element.objects.create(tenant=self.b, code="B", name="Chez B")
+        self.token = self.login(self.a)["access"]
+
+    def test_other_space_is_invisible(self):
+        response = self.api("get", "/api/{{ app_name }}/elements/", self.a, token=self.token)
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertEqual(response.json()["results"], [])

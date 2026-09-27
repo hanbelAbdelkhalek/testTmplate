@@ -1,0 +1,29 @@
+from rest_framework import serializers
+
+from apps.audit.services import actor_of, record
+from apps.tenancy.views import TenantScopedViewSet
+
+from .models import Element
+
+
+class ElementSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Element
+        fields = ["id", "code", "name", "created_at", "updated_at"]  # jamais `tenant`
+        read_only_fields = ["id", "created_at", "updated_at"]
+
+
+class ElementViewSet(TenantScopedViewSet):
+    queryset = Element.objects.all()
+    serializer_class = ElementSerializer
+    module = "{{ app_name }}"
+    permissions = {
+        "list": "{{ app_name }}.view",
+        "retrieve": "{{ app_name }}.view",
+        "*": "{{ app_name }}.manage",
+    }
+
+    def perform_create(self, serializer):
+        super().perform_create(serializer)
+        record("{{ app_name }}.element_created", tenant=self.request.tenant,
+               actor=actor_of(self.request), target=serializer.instance)

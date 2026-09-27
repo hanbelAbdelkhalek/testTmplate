@@ -1,0 +1,65 @@
+# Une solution = deux piles sur ce même fichier, séparées par un préfixe et un
+# fichier d'environnement :
+#
+#   ./deploy.sh dev    →  PREFIX=<solution>-dev,  .env.dev
+#   ./deploy.sh prod   →  PREFIX=<solution>-prod, .env.prod
+#
+# Un fichier Compose par pile finirait par diverger au premier correctif
+# appliqué d'un seul côté.
+#
+# Aucun port publié : nginx (global_nginx) joint les conteneurs par leur
+# alias sur apps_network. Publier un port exposerait la solution directement
+# sur l'IP du serveur, sans Cloudflare devant.
+
+services:
+  backend:
+    build: ./backend
+    container_name: ${PREFIX:?renseigner PREFIX}_backend
+    restart: unless-stopped
+    # Toutes les variables de la pile (SECRET_KEY, DATABASE_URL,
+    # PLATFORM_SHARED_SECRET…) : une variable ajoutée dans l'écran de la
+    # plateforme arrive ici sans modifier ce fichier.
+    env_file: ["${ENV_FILE:?lancer via deploy.sh}"]
+    environment:
+      DEBUG: "False"
+      # L'alias en tirets : Django rejette tout nom d'hôte contenant un
+      # souligné, avant même de lire ALLOWED_HOSTS. 127.0.0.1 : la sonde.
+      ALLOWED_HOSTS: "${PREFIX}-backend,localhost,127.0.0.1"
+      RELEASE_SHA: ${RELEASE_SHA:-inconnu}
+      MEDIA_ROOT: /app/media
+    volumes:
+      - media:/app/media
+    networks:
+      apps_network:
+        aliases:
+          - ${PREFIX}-backend
+
+  frontend:
+    build:
+      # Son propre dossier : construit depuis la racine, l'image emporterait
+      # tout le code Django.
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_APP_NAME: ${APP_NAME:-SigmaGravity}
+    container_name: ${PREFIX}_frontend
+    restart: unless-stopped
+    environment:
+      # Serveur à serveur, sur le réseau interne : ni Internet ni Cloudflare.
+      DJANGO_API_URL: "http://${PREFIX}-backend:8000/api"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      apps_network:
+        aliases:
+          - ${PREFIX}-frontend
+
+volumes:
+  # Nommé d'après la pile : partagé, les fichiers de l'essai apparaîtraient
+  # en production.
+  media:
+    name: ${PREFIX}_media
+
+networks:
+  apps_network:
+    external: true

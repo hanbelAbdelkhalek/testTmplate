@@ -1,0 +1,5 @@
+# LF partout : un script shell en CRLF échoue dans le conteneur Linux
+# (« /bin/sh^M: bad interpreter »).
+* text=auto eol=lf
+*.png binary
+*.ico binary

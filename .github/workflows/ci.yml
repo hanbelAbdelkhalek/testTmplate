@@ -1,0 +1,47 @@
+# Contrôles bloquants avant toute fusion : tests backend (dont l'isolation
+# entre espaces et les appels signés de la plateforme), types, lint et build
+# du frontend.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: python manage.py check --deploy --fail-level ERROR
+        env:
+          SECRET_KEY: ci-only-secret-key-not-used-anywhere-else-0123456789
+      - name: Migrations à jour
+        run: python manage.py makemigrations --check --dry-run
+        env:
+          DEBUG: "1"
+      - run: python manage.py test
+        env:
+          DEBUG: "1"
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npx eslint src
+      - run: npm run build

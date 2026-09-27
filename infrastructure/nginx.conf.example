@@ -1,0 +1,45 @@
+# Bloc nginx d'une solution, à poser dans ~/infra/nginx/conf.d/ sur le serveur,
+# puis : docker exec global_nginx nginx -t && docker exec global_nginx nginx -s reload
+#
+# TOUT VA AU FRONTEND. DJANGO N'EST PAS EXPOSÉ.
+# Next sert les pages et /api (relais vers Django, qui ajoute le jeton et
+# l'espace). Django n'est joint qu'en interne. Envoyer /api directement à
+# Django casserait la connexion (les cookies sont posés par Next) et
+# exposerait l'API interne de la plateforme.
+#
+# NOMS LITTÉRAUX, et un fichier qui passe AVANT nginx-erp.conf dans l'ordre
+# alphabétique (préfixe « 10- ») : les blocs de l'ERP capturent par
+# expression régulière tous les sous-domaines d'un niveau. nginx préfère
+# toujours un nom exact.
+#
+# Chaque adresse attribuée à un client s'ajoute à server_name.
+
+server {
+    listen 80;
+    listen [::]:80;
+    listen 8080;
+    listen [::]:8080;
+    server_name dev-client1.sigmagravity.com;
+
+    client_max_body_size 25M;
+
+    # Variable : force nginx à re-résoudre l'alias, dont l'IP change à chaque
+    # recréation du conteneur.
+    set $front template-dev-frontend:3000;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        proxy_pass http://$front;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        # En dur : Cloudflare termine le TLS et parle à l'origine en HTTP.
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}

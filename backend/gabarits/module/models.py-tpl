@@ -1,0 +1,22 @@
+from django.db import models
+
+from apps.tenancy.models import TenantModel
+
+
+class Element(TenantModel):
+    """Renommer, puis décrire le métier. Toujours hériter de TenantModel."""
+
+    code = models.CharField(max_length=64)
+    name = models.CharField(max_length=200)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["name"]
+        constraints = [
+            # Unicité PAR ESPACE, jamais `unique=True` sur le champ seul.
+            models.UniqueConstraint(fields=["tenant", "code"], name="{{ app_name }}_element_code_par_espace")
+        ]
+
+    def __str__(self):
+        return self.name

@@ -1,0 +1,61 @@
+# Manifeste lu par la plateforme :
+#   docker exec nfc_dev_backend python manage.py register_solution /chemin/solution.yaml
+#
+# Garder `modules` et `roles` alignés sur backend/apps/core/solution.py.
+# Aucun secret ici.
+apiVersion: platform.sigmagravity.com/v1
+kind: Solution
+
+metadata:
+  key: template
+  displayName: SigmaGravity Template
+  description: Modèle de départ des solutions SigmaGravity.
+
+spec:
+  corePackageVersion: 0.1.0
+  repository:
+    provider: github
+    visibility: private
+    url: ""
+    devBranch: dev
+    prodBranch: main
+
+  runtime:
+    architecture: linux/arm64
+    backend:
+      framework: django
+      healthPath: /api/health/ready/
+    frontend:
+      framework: nextjs
+      healthPath: /health
+
+  tenancy:
+    mode: shared-database-row
+    subdomainPrefix: ""
+
+  modules:
+    - key: catalog
+      label: Catalogue
+      description: Articles, références et prix.
+      defaultEnabled: true
+      dependencies: []
+      limits:
+        max_items:
+          type: integer
+          minimum: 0
+
+  roles:
+    - key: admin
+      label: Administrateur
+    - key: manager
+      label: Responsable
+    - key: member
+      label: Membre
+
+  templates:
+    - key: standard
+      version: 1.0.0
+      status: published
+      defaultModules: [catalog]
+      seedProvider: apps.core.solution.seed_demo
+      defaultSettings: {}
