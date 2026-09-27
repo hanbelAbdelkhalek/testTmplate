@@ -72,3 +72,13 @@ class Job(models.Model):
             "created_at": self.created_at.isoformat(),
             "finished_at": self.finished_at.isoformat() if self.finished_at else None,
         }
+
+
+class DemoSnapshot(models.Model):
+    """La référence d'un espace de démonstration : l'état auquel il revient chaque nuit."""
+
+    tenant = models.OneToOneField("tenancy.Tenant", on_delete=models.CASCADE, related_name="demo_snapshot")
+    # Sérialisation Django (comptes, rôles, modules, tables métier de l'espace).
+    data = models.JSONField(default=list)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)

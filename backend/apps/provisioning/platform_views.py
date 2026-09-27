@@ -308,3 +308,88 @@ class RoleView(TenantPlatformView):
         role.delete()
         record("role.deleted", tenant=tenant, actor=actor_of(request), role=key)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# --- Démonstration --------------------------------------------------------------
+
+
+def _etat_demo(tenant) -> dict:
+    from .demo import compter
+    from .models import DemoSnapshot
+
+    snapshot = DemoSnapshot.objects.filter(tenant=tenant).first()
+    return {
+        "tenant": tenant.slug,
+        "is_demo": tenant.is_demo,
+        "snapshot_at": snapshot.updated_at.isoformat() if snapshot else None,
+        "rows": compter(tenant),
+    }
+
+
+class DemoView(TenantPlatformView):
+    """GET : état de la démo. POST : l'ouvrir (espace marqué démo, données d'exemple s'il est vide)."""
+
+    def get(self, request):
+        tenant = self.tenant(request)
+        if tenant is None:
+            return refus("Démo introuvable.", 404, "tenant_not_found")
+        return Response(_etat_demo(tenant))
+
+    @idempotent
+    def post(self, request):
+        slug = str(request.data.get("tenant", "")).strip().lower()
+        try:
+            slug_validator(slug)
+        except Exception:
+            return refus("Nom d'espace invalide.")
+        with transaction.atomic():
+            tenant, created = ouvrir_espace(slug, str(request.data.get("company", "")).strip(), actor_of(request))
+            if not tenant.is_demo:
+                if not created and Account.objects.filter(tenant=tenant).exists():
+                    # Un vrai espace ne devient jamais une démo : elle serait
+                    # remise à zéro chaque nuit.
+                    return refus("Cet espace existe déjà et n'est pas une démo.", 409, "not_demo")
+                tenant.is_demo = True
+                tenant.save(update_fields=["is_demo", "updated_at"])
+            from .demo import compter
+
+            if not compter(tenant).keys() - {"identity.Account", "rbac.Role", "entitlements.TenantModule"}:
+                solution.seed_demo(tenant)
+        record("demo.opened", tenant=tenant, actor=actor_of(request), target=tenant)
+        return Response(_etat_demo(tenant), status=201 if created else 200)
+
+
+class DemoSnapshotView(TenantPlatformView):
+    """Enregistre l'état actuel de la démo comme référence."""
+
+    @idempotent
+    def post(self, request):
+        from .demo import DemoError, capturer
+
+        tenant = self.tenant(request)
+        if tenant is None:
+            return refus("Démo introuvable.", 404, "tenant_not_found")
+        try:
+            snapshot = capturer(tenant)
+        except DemoError as exc:
+            return refus(exc.message, exc.status, exc.code)
+        record("demo.snapshot", tenant=tenant, actor=actor_of(request), target=tenant, rows=len(snapshot.data))
+        return Response(_etat_demo(tenant))
+
+
+class DemoResetView(TenantPlatformView):
+    """Remet la démo dans l'état de sa référence."""
+
+    @idempotent
+    def post(self, request):
+        from .demo import DemoError, restaurer
+
+        tenant = self.tenant(request)
+        if tenant is None:
+            return refus("Démo introuvable.", 404, "tenant_not_found")
+        try:
+            resultat = restaurer(tenant)
+        except DemoError as exc:
+            return refus(exc.message, exc.status, exc.code)
+        record("demo.reset", tenant=tenant, actor=actor_of(request), target=tenant, **resultat)
+        return Response({**_etat_demo(tenant), **resultat})

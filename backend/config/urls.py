@@ -32,6 +32,9 @@ platform_patterns = [
     path("accounts/<int:pk>/", platform.AccountView.as_view()),
     path("roles/", platform.RolesView.as_view()),
     path("roles/<slug:key>/", platform.RoleView.as_view()),
+    path("demo/", platform.DemoView.as_view()),
+    path("demo/snapshot/", platform.DemoSnapshotView.as_view()),
+    path("demo/reset/", platform.DemoResetView.as_view()),
 ]
 
 urlpatterns = [
