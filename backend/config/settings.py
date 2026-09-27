@@ -123,9 +123,24 @@ TEMPLATES = [
 # --- Base de données ----------------------------------------------------------
 # PostgreSQL partagé du serveur (`global_postgres`), une base par pile :
 # <solution>_dev et <solution>_prod. SQLite en local si DATABASE_URL est vide.
+def _database_url() -> str:
+    # DATABASE_URL d'abord ; sinon les variables séparées (DB_HOST, DB_NAME…),
+    # que la plateforme génère aussi, avec le même mot de passe.
+    if env("DATABASE_URL"):
+        return env("DATABASE_URL")
+    if env("DB_NAME"):
+        from urllib.parse import quote
+
+        return (
+            f"postgres://{quote(env('DB_USER'), safe='')}:{quote(env('DB_PASSWORD'), safe='')}"
+            f"@{env('DB_HOST', 'global_postgres')}:{env('DB_PORT', '5432')}/{env('DB_NAME')}"
+        )
+    return f"sqlite:///{BASE_DIR / 'db.sqlite3'}"
+
+
 DATABASES = {
     "default": dj_database_url.parse(
-        env("DATABASE_URL") or f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
+        _database_url(),
         conn_max_age=60,
         conn_health_checks=True,
     )
