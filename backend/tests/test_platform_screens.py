@@ -94,3 +94,18 @@ class PlatformScreensTests(SolutionTestCase):
         self.bootstrap()
         with self.assertRaises(RestrictedError):
             Role.objects.get(key="admin").delete()
+
+    def test_space_opens_as_soon_as_the_address_is_chosen(self):
+        first = self.platform("post", "/api/platform/tenant/", {"tenant": "dev-client2", "company": "Client Deux"})
+        self.assertEqual(first.status_code, 201, first.content)
+        again = self.platform("post", "/api/platform/tenant/", {"tenant": "dev-client2", "company": "X"})
+        self.assertEqual((again.status_code, again.json()["created"]), (200, False))
+        tenant = Tenant.objects.get(slug="dev-client2")
+        self.assertEqual(tenant.display_name, "Client Deux")
+        self.assertTrue(Role.objects.filter(tenant=tenant, key="admin").exists())
+        # L'adresse répond : la page de connexion trouve l'espace (401, et non 404).
+        response = self.api("post", "/api/auth/login/", host="dev-client2.sigmagravity.com",
+                            data={"username": "x", "password": "y"})
+        self.assertEqual(response.status_code, 401)
+        # Le premier administrateur s'ajoute ensuite à cet espace.
+        self.assertEqual(self.bootstrap(tenant="dev-client2").status_code, 201)

@@ -7,6 +7,7 @@ d'adresse (`tenant`, ex. « dev-client1 »), celui que la plateforme a
 enregistré pour l'abonnement.
 
     GET    platform/tenant-status/?tenant=     a-t-il un administrateur ?
+    POST   platform/tenant/                    ouvrir l'espace (adresse choisie), sans compte
     POST   platform/bootstrap-admin/           premier administrateur — crée l'espace s'il n'existe pas
     GET    platform/accounts/?tenant=          comptes et rôles
     POST   platform/accounts/                  ajouter un compte
@@ -111,6 +112,38 @@ class TenantStatusView(TenantPlatformView):
         return Response({"has_admin": bool(tenant) and Account.objects.filter(tenant=tenant).exists()})
 
 
+def ouvrir_espace(slug: str, company: str, actor: str) -> tuple[Tenant, bool]:
+    """L'espace `slug`, créé s'il n'existe pas : adresse, rôles, modules."""
+    tenant, created = Tenant.objects.get_or_create(slug=slug, defaults={"display_name": company or slug})
+    if created:
+        Domain.objects.get_or_create(
+            hostname=f"{slug}.{settings.ROOT_DOMAIN}", defaults={"tenant": tenant, "is_primary": True}
+        )
+        ensure_default_roles(tenant)
+        ensure_default_modules(tenant)
+        record("tenant.provisioned", tenant=tenant, actor=actor, target=tenant)
+    return tenant, created
+
+
+class TenantOpenView(TenantPlatformView):
+    """Ouvre l'espace dès que le client a choisi son adresse, avant tout compte.
+
+    Sans cela, l'adresse répondait « aucun espace » jusqu'au premier compte.
+    Sans effet si l'espace existe déjà.
+    """
+
+    @idempotent
+    def post(self, request):
+        slug = str(request.data.get("tenant", "")).strip().lower()
+        try:
+            slug_validator(slug)
+        except Exception:
+            return refus("Nom d'espace invalide.")
+        with transaction.atomic():
+            tenant, created = ouvrir_espace(slug, str(request.data.get("company", "")).strip(), actor_of(request))
+        return Response({"tenant": tenant.slug, "created": created}, status=201 if created else 200)
+
+
 class BootstrapAdminView(TenantPlatformView):
     """Premier administrateur. Crée l'espace à la volée quand la plateforme ne l'a pas encore provisionné."""
 
@@ -122,17 +155,7 @@ class BootstrapAdminView(TenantPlatformView):
         except Exception:
             return refus("Nom d'espace invalide.")
         with transaction.atomic():
-            tenant, created = Tenant.objects.get_or_create(
-                slug=slug, defaults={"display_name": str(request.data.get("company", "")).strip() or slug}
-            )
-            if created:
-                Domain.objects.get_or_create(
-                    hostname=f"{slug}.{settings.ROOT_DOMAIN}", defaults={"tenant": tenant, "is_primary": True}
-                )
-                ensure_default_roles(tenant)
-                ensure_default_modules(tenant)
-                record("tenant.provisioned", tenant=tenant, actor=actor_of(request), target=tenant,
-                       via="bootstrap-admin")
+            tenant, _ = ouvrir_espace(slug, str(request.data.get("company", "")).strip(), actor_of(request))
             try:
                 account = bootstrap_admin(
                     tenant,

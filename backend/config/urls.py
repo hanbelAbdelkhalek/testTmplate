@@ -26,6 +26,7 @@ internal_patterns = [
 # Écrans de la plateforme (comptes et rôles), même forme que l'ERP et Lumina.
 platform_patterns = [
     path("tenant-status/", platform.TenantStatusView.as_view()),
+    path("tenant/", platform.TenantOpenView.as_view()),
     path("bootstrap-admin/", platform.BootstrapAdminView.as_view()),
     path("accounts/", platform.AccountsView.as_view()),
     path("accounts/<int:pk>/", platform.AccountView.as_view()),
