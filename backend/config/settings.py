@@ -63,6 +63,14 @@ ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", "localhost,127.0.0.1")
 SECURE_SSL_REDIRECT = False
 SECURE_CONTENT_TYPE_NOSNIFF = True
 
+# Avertissements de `check --deploy` écartés en connaissance de cause :
+#  - W003 (CSRF) : Django n'accepte que des jetons Bearer, jamais de cookie de
+#    session ; les cookies du frontend sont en SameSite=Lax et l'API n'accepte
+#    que du JSON — un formulaire d'un autre site ne peut rien envoyer.
+#  - W004 (HSTS) et W008 (redirection HTTPS) : assurés par Cloudflare devant ;
+#    les faire ici casserait les appels internes en HTTP du frontend.
+SILENCED_SYSTEM_CHECKS = ["security.W003", "security.W004", "security.W008"]
+
 # --- Plateforme SigmaGravity --------------------------------------------------
 # Secret partagé avec la plateforme, qui signe ses appels internes (HMAC).
 # Absent : les routes /api/internal/ répondent 503 plutôt que d'être ouvertes.
