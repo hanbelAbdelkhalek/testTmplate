@@ -36,7 +36,10 @@ class Account(TenantModel):
     username = models.CharField(max_length=80)
     display_name = models.CharField(max_length=180)
     email = models.EmailField()
-    role = models.ForeignKey("rbac.Role", on_delete=models.PROTECT, related_name="accounts")
+    # RESTRICT et non PROTECT : un rôle encore porté par un compte ne se
+    # supprime pas seul, mais la suppression de l'espace entier (qui emporte
+    # comptes et rôles ensemble) reste possible. PROTECT la bloquait.
+    role = models.ForeignKey("rbac.Role", on_delete=models.RESTRICT, related_name="accounts")
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=STATUS_ACTIVE)
     # Tout jeton émis avant cette date est refusé. Posée au changement de mot
     # de passe et à la désactivation : un jeton ne se révoque pas autrement.

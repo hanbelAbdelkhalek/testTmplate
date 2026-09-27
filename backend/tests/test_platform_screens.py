@@ -87,3 +87,10 @@ class PlatformScreensTests(SolutionTestCase):
         self.assertEqual(response.status_code, 409)
         self.assertEqual(Role.objects.get(key="admin").permissions, ["*"])
         self.assertEqual(Account.objects.count(), 1)
+
+    def test_role_in_use_cannot_be_deleted_directly(self):
+        from django.db.models import RestrictedError
+
+        self.bootstrap()
+        with self.assertRaises(RestrictedError):
+            Role.objects.get(key="admin").delete()

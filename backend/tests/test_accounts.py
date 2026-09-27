@@ -82,3 +82,9 @@ class AccountTests(SolutionTestCase):
         # Un autre compte du même espace n'est pas bloqué pour autant.
         other = self.api("post", "/api/auth/login/", self.t, data={"username": "autre", "password": "x"})
         self.assertEqual(other.status_code, 401)
+
+    def test_a_whole_space_can_be_deleted(self):
+        self.create()
+        tenant_id = self.t.pk
+        self.t.delete()
+        self.assertFalse(Account.objects.filter(tenant_id=tenant_id).exists())
